@@ -19,11 +19,11 @@ def parse_track(track_name):
 
         return res, x, y, direction
 
-
-r, x, y, _ = parse_track('skidpad.yaml')
-plt.plot([p[0] for p in r], [p[1] for p in r], '.')
-plt.plot(x, y, 'o')
-plt.axis('equal')
-plt.show()
+#
+# r, x, y, _ = parse_track('skidpad.yaml')
+# plt.plot([p[0] for p in r], [p[1] for p in r], '.')
+# plt.plot(x, y, 'o')
+# plt.axis('equal')
+# plt.show()
 
 
