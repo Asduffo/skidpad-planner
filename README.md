@@ -1,6 +1,6 @@
 # Skidpad-Planner
 
-This is a planner-code for the competition category "Skidpad" in [Formula Student](https://www.formulastudent.de/fsg/).
+This is the very simple planner-code for the competition category "Skidpad" in [Formula Student](https://www.formulastudent.de/fsg/).
 In this category, the car has to drive through a parkour of two circles, going through 
 both of them 2 times.
 
