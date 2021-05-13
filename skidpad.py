@@ -1,11 +1,19 @@
 import numpy as np
 import math
-import matplotlib.pyplot as plt
-from euclid3 import Vector2, Point2, LineSegment2
-from parse_track import parse_track
-from circle_fit import least_squares_circle, plot_data_circle, hyper_fit
-from scipy.spatial import *
+from euclid3 import Point2, LineSegment2
+from circle_fit import least_squares_circle
 from spline import calc_spline_course
+
+
+class Point(Point2):
+
+    def __init__(self, x, y):
+        """ Initializes a point with the given x and y coordinates.
+
+        :param x: The x coordinate of the cone
+        :param y: The y coordinate of the cone
+        """
+        Point2.__init__(self, float(x), float(y))
 
 
 class SkidPadPlanner:
@@ -20,10 +28,12 @@ class SkidPadPlanner:
         left_cones, right_cones = [], []
 
         for cone in self.cones:
-            vector = Vector2(self.start_point.x - cone.x, self.start_point.y - cone.y).normalized()
-            angle_with_start_vector = abs(math.atan2(vector.y, vector.x) - math.atan2(self.start_vector.y,
-                                                                                      self.start_vector.x))
-            if angle_with_start_vector < math.pi:
+            p1 = self.start_point
+            p2 = LineSegment2(self.start_point, self.start_vector).p2
+            det = (cone.x - p1.x) * (p2.y - p1.y) - (cone.y - p1.y) * (p2.x - p1.x)
+
+            if det < 0:
+
                 left_cones.append(cone)
             else:
                 right_cones.append(cone)
@@ -32,15 +42,18 @@ class SkidPadPlanner:
 
     def _get_middle_of_circles(self):
         left_cones, right_cones = self._sort_cones_by_start_pose()
+
+        if not (len(left_cones) > 7 and len(right_cones) > 7):
+            return None, None
         xl, yl, _ = circle_filtering([[p.x, p.y] for p in left_cones], 10)
         xr, yr, _ = circle_filtering([[p.x, p.y] for p in right_cones], 10)
 
-        return Point2(xl, yl), Point2(xr, yr)
+        return Point(xl, yl), Point(xr, yr)
 
-    def get_path_spline(self):
+    def get_path(self):
         point_left, point_right = self._get_middle_of_circles()
-        center_point = Point2((point_left.x + point_right.x) / 2, (point_right.y + point_left.y) / 2)
 
+        center_point = Point((point_left.x + point_right.x) / 2, (point_right.y + point_left.y) / 2)
         way_points = [(self.start_point.x, self.start_point.y)]
 
         right_vec = LineSegment2(point_right, center_point).v.normalized()
@@ -48,7 +61,7 @@ class SkidPadPlanner:
 
         R = point_right.distance(center_point)
 
-        theta_fit = np.linspace(angle, angle - 2 * math.pi, 10)
+        theta_fit = np.linspace(angle, angle - 2 * math.pi, 20)
 
         x_fit = point_right.x + R * np.cos(theta_fit)
         y_fit = point_right.y + R * np.sin(theta_fit)
@@ -66,84 +79,24 @@ class SkidPadPlanner:
         y_fit = point_left.y + R * np.sin(theta_fit)
 
         way_points += list(zip(x_fit, y_fit))[:-1] + list(zip(x_fit, y_fit))[:-1]
-        way_points.append((0, 10))
-        return [p[0] for p in way_points], [p[1] for p in way_points]
+
+        last_point = LineSegment2(self.start_point, self.start_vector * 30).p2
+        way_points.append((last_point[0], last_point[1]))
+
+        x, y, _, _, _ = calc_spline_course([p[0] for p in way_points], [p[1] for p in way_points])
+        return x, y
 
 
-def filter_points(from_point, points, distance):
-    new = []
-    for p in points:
-        if Point2(from_point[0], from_point[1]).distance(Point2(p[0], p[1])) <= distance:
-            new.append(p)
-    return new
-
-
-def points_with_noise(points, possible_noise):
-    import random
-    new_points = []
-    for p in points:
-        new = []
-        r = random.uniform(-possible_noise, possible_noise)
-        new.append(p[0] + r)
-        r = random.uniform(-possible_noise, possible_noise)
-        new.append(p[1] + r)
-        new_points.append(new)
-    return new_points
-
-
-def circle_filtering(points, iterations):
-    xc, yc, R, residu = least_squares_circle(points)
-    while len(points) > 3 and iterations > 1:
-        xc, yc, R, residu = least_squares_circle(points)
-
-        plot_data_circle([p[0] for p in points], [p[1] for p in points], xc, yc, R)
+def circle_filtering(points, max_iterations):
+    xc, yc, R, _ = least_squares_circle(points)
+    while len(points) > 3 and max_iterations > 1:
+        xc, yc, R, _ = least_squares_circle(points)
 
         n = []
         for p in points:
-            if Point2(p[0], p[1]).distance(Point2(float(xc), float(yc))) <= R:
+            if Point(p[0], p[1]).distance(Point(float(xc), float(yc))) <= R:
                 n.append(p)
         points = n
-        iterations -= 1
+        max_iterations -= 1
 
     return xc, yc, R
-
-
-def get_avg_vector(points):
-    x_sum = 0
-    y_sum = 0
-    for i in range(len(points) - 1):
-        vec = LineSegment2(Point2(points[i][0], points[i][1]),
-                           Point2(points[i + 1][0], points[i + 1][1])).v.normalized()
-        x_sum += vec.x
-        y_sum += vec.y
-
-    avg_vec = Vector2(x_sum, y_sum).normalized()
-
-    return [avg_vec.x, avg_vec.y]
-
-
-def main():
-    points, x, y, d = parse_track('skidpad.yaml')
-
-    points = points_with_noise(points, 1)
-    points = filter_points(Point2(x, y), points, 200)
-
-    sp = SkidPadPlanner([Point2(p[0], p[1]) for p in points], Point2(x, y), Vector2(0, 1))
-    l, r = sp._get_middle_of_circles()
-
-    plt.plot([p[0] for p in points], [p[1] for p in points], '.')
-
-    plt.plot(l.x, l.y, 'x')
-    plt.plot(r.x, r.y, 'x')
-
-    x, y = sp.get_path_spline()
-
-    x, y, _, _, _ = calc_spline_course(x, y)
-    plt.plot(x, y, '-')
-
-    plt.axis('equal')
-    plt.show()
-
-
-if __name__ == '__main__':
-    main()
