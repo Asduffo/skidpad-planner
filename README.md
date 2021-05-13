@@ -7,7 +7,7 @@ both of them 2 times.
 This planner gets his path by fitting circles on to the coordinates of cones, using the
 least-squares method ([circle-fit](https://pypi.org/project/circle-fit/)).
 
-## Run code an example-track
+## Run code on an example-track
 
 1. Clone this repository
 ```shell
