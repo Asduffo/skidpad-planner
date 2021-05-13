@@ -5,7 +5,7 @@ In this category, the car has to drive through a parkour of two circles, going t
 both of them 2 times.
 
 This planner gets his path by fitting circles on to the coordinates of cones, using the
-least-squares ([circle-fit](https://pypi.org/project/circle-fit/)).
+least-squares method ([circle-fit](https://pypi.org/project/circle-fit/)).
 
 ## Run code an example-track
 
