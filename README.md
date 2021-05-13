@@ -25,3 +25,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Expected Result:
+
+![alt text](https://github.com/nathanieltornow/skidpad-planner/blob/main/example-plot.jpg "Plot")
+
+
