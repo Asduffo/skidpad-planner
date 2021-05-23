@@ -27,6 +27,6 @@ python main.py
 
 Expected Result:
 
-![alt text](https://github.com/nathanieltornow/skidpad-planner/blob/main/example-plot.jpg "Plot")
+![alt text](./example-plot.jpg "Plot")
 
 
